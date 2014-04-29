@@ -3,6 +3,7 @@ import psycopg2
 import ConfigParser
 import datetime
 import logging
+import base64
 
 """
 simple app to get a user name, password, db user name, db password and role
@@ -34,14 +35,17 @@ def createuser(uname, upwd, dbname, dbpwd, role):
     encrypt passwords and insert into db
     """
     supwd = pwd_context.encrypt(upwd)
-    sdbpwd = pwd_context.encrypt(dbpwd)
+    sdbpwd = base64.b64encode(dbpwd)
     db = psycopg2.connect(database='EM', user='rjn', password='zaxxon')
     with db:
         with db.cursor() as cur:
-            cur.execute("INSERT em_users(username, passwd, role, dbusername, dbpasswd) VALUES(%s, %s, %s, %s, %s)", (uname, upwd, role, dbname, dbpwd))
-            
-    
-    pass
+            try:
+                cur.execute("INSERT INTO em_users(username, passwd, role, dbusername, dbpasswd) VALUES(%s, %s, %s, %s, %s)", (uname, supwd, role, dbname, sdbpwd))
+            except psycopg2.Error, e:
+                print "%s:%s" % (e.pgerror, e.pgcode)
+                return False
+    return True
+
 
 if __name__ == "__main__":
     
